@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>パラショッパーズ note記事ジェネレーター</title>
+<style>
+:root {
+  --bg: #0d0d0f;
+  --surface: #15151a;
+  --surface2: #1e1e26;
+  --border: #2a2a38;
+  --accent: #f5a623;
+  --accent2: #e8304a;
+  --text: #e8e8f0;
+  --muted: #888899;
+  --success: #3ecf8e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+
+.header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header h1 { font-size: 1.2rem; color: var(--accent); font-weight: 900; letter-spacing: 2px; }
+.header p { font-size: 0.68rem; color: var(--muted); }
+
+/* ===== メインコンテンツ ===== */
+.main { max-width: 680px; margin: 0 auto; padding: 20px 16px 100px; }
+
+.stitle {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.stitle::after { content:''; flex:1; height:1px; background:var(--border); }
+
+/* ステップ表示 */
+.steps-visual {
+  display: flex; align-items: center; gap: 0;
+  margin-bottom: 24px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 10px; overflow: hidden;
+}
+.sv-item {
+  flex: 1; padding: 12px 8px; text-align: center;
+  font-size: 0.7rem; color: var(--muted); line-height: 1.4;
+  border-right: 1px solid var(--border);
+}
+.sv-item:last-child { border-right: none; }
+.sv-item.active { background: rgba(245,166,35,0.08); color: var(--accent); }
+.sv-item .sv-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--border); color: var(--muted);
+  font-size: 0.65rem; font-weight: 700; margin-bottom: 4px;
+}
+.sv-item.active .sv-num { background: var(--accent); color: #000; }
+.sv-icon { font-size: 1.2rem; display: block; margin-bottom: 3px; }
+
+/* カード */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 10px; padding: 18px; margin-bottom: 14px;
+}
+.card-title {
+  font-size: 0.85rem; font-weight: 700; color: var(--accent);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+
+/* アップロード */
+.upload-label {
+  display: block; border: 2px dashed var(--border);
+  border-radius: 10px; padding: 24px 16px;
+  text-align: center; cursor: pointer;
+  background: var(--surface2); transition: all 0.2s;
+}
+.upload-label:hover, .upload-label.drag {
+  border-color: var(--accent); background: rgba(245,166,35,0.05);
+}
+#imgInput { display: none; }
+.upload-icon { font-size: 1.8rem; display: block; margin-bottom: 6px; }
+.upload-label p { color: var(--muted); line-height: 1.6; font-size: 0.8rem; }
+.upload-label strong { color: var(--accent); }
+
+.thumb-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 10px 0 6px;
+}
+.img-count { font-size: 0.72rem; color: var(--muted); }
+.img-count span { color: var(--accent); font-weight: 700; }
+.thumb-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; }
+.thumb {
+  position: relative; aspect-ratio: 3/4;
+  border-radius: 5px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface2);
+  cursor: grab; user-select: none;
+}
+.thumb img { width:100%; height:100%; object-fit:cover; pointer-events:none; display:block; }
+.thumb-n {
+  position:absolute; top:2px; left:2px;
+  background:rgba(0,0,0,0.85); color:#fff;
+  font-size:0.55rem; font-weight:700; padding:1px 3px; border-radius:2px;
+}
+.thumb-x {
+  position:absolute; top:2px; right:2px;
+  background:var(--accent2); color:#fff; border:none; border-radius:3px;
+  width:15px; height:15px; font-size:0.55rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.thumb.dragging { opacity:0.25; }
+.thumb.over { outline:2px solid var(--accent); }
+
+/* フォーム */
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.fg { margin-bottom:10px; }
+label { display:block; font-size:0.68rem; color:var(--muted); margin-bottom:4px; }
+input[type=text], input[type=number] {
+  width:100%; background:var(--surface2); border:1px solid var(--border);
+  color:var(--text); border-radius:6px; padding:8px 10px;
+  font-family:inherit; font-size:0.85rem; outline:none;
+}
+input:focus { border-color:var(--accent); }
+
+/* アフィリエイト */
+.aff-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.vol-tag { font-size:0.62rem; font-weight:700; color:var(--accent); background:rgba(245,166,35,0.12); padding:2px 5px; border-radius:3px; min-width:26px; text-align:center; flex-shrink:0; }
+.aff-in { flex:1; background:var(--surface2); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:5px 8px; font-family:inherit; font-size:0.72rem; outline:none; }
+.aff-in:focus { border-color:var(--accent); }
+
+/* ボタン */
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 16px; border-radius:8px; font-family:inherit; font-size:0.85rem; font-weight:700; cursor:pointer; border:none; transition:all 0.15s; text-decoration:none; }
+.btn-main { background:var(--accent); color:#000; width:100%; padding:14px; font-size:0.95rem; }
+.btn-main:hover { background:#ffc04d; }
+.btn-main:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
+.btn-sub { background:transparent; color:var(--muted); border:1px solid var(--border); font-size:0.78rem; padding:8px 14px; }
+.btn-sub:hover { border-color:var(--accent); color:var(--accent); }
+.btn-claude { background: linear-gradient(135deg, #cc785c, #b85c3a); color:#fff; width:100%; padding:16px; font-size:1rem; border-radius:10px; box-shadow: 0 4px 20px rgba(204,120,92,0.4); }
+.btn-claude:hover { background: linear-gradient(135deg, #d98870, #cc785c); transform: translateY(-1px); box-shadow: 0 6px 24px rgba(204,120,92,0.5); }
+.btn-copy { background:var(--success); color:#000; padding:9px 16px; font-size:0.78rem; }
+.btn-del { background:transparent; border:1px solid var(--border); color:var(--muted); padding:8px 12px; font-size:0.72rem; }
+.btn-del:hover { border-color:var(--accent2); color:var(--accent2); }
+.btn-row { display:flex; gap:8px; margin-top:8px; flex-wrap:wrap; }
+
+/* ヒント */
+.tip { font-size:0.68rem; color:var(--muted); line-height:1.5; background:rgba(245,166,35,0.04); border-left:2px solid var(--accent); padding:6px 10px; border-radius:0 4px 4px 0; margin-bottom:10px; }
+.vinfo { display:none; font-size:0.68rem; color:var(--muted); padding:5px 10px; background:rgba(245,166,35,0.05); border-left:2px solid var(--accent); border-radius:0 4px 4px 0; margin-bottom:10px; }
+
+/* プロンプト出力 */
+.prompt-out {
+  background:var(--bg); border:1px solid var(--border);
+  border-radius:8px; padding:14px;
+  font-size:0.75rem; line-height:1.7;
+  white-space:pre-wrap; word-break:break-word;
+  color:var(--text); max-height:200px; overflow-y:auto;
+}
+
+/* Claudeへ送るボックス */
+.claude-box {
+  background: linear-gradient(135deg, rgba(204,120,92,0.08), rgba(184,92,58,0.05));
+  border: 1px solid rgba(204,120,92,0.3);
+  border-radius: 12px; padding: 18px; margin-bottom: 14px;
+}
+.claude-box-title {
+  font-size: 0.9rem; font-weight: 700; color: #cc785c;
+  margin-bottom: 6px; display: flex; align-items: center; gap: 8px;
+}
+.claude-box p { font-size: 0.75rem; color: var(--muted); line-height: 1.6; margin-bottom: 12px; }
+
+/* 手順リスト */
+.how-list { list-style:none; padding:0; }
+.how-list li {
+  display:flex; gap:10px; margin-bottom:10px;
+  font-size:0.78rem; color:var(--muted); line-height:1.6; align-items:flex-start;
+}
+.how-num {
+  background:var(--accent); color:#000; font-weight:700; font-size:0.65rem;
+  width:18px; height:18px; border-radius:50%;
+  display:flex; align-items:center; justify-content:center; flex-shrink:0; margin-top:1px;
+}
+
+/* コピー成功 */
+.copied-msg { color:var(--success); font-size:0.72rem; display:none; }
+.copied-msg.on { display:inline; }
+
+/* アフィリエイトセクション折りたたみ */
+.aff-toggle { cursor:pointer; display:flex; align-items:center; gap:8px; }
+.aff-toggle .arrow { transition:transform 0.2s; }
+.aff-toggle.open .arrow { transform:rotate(90deg); }
+.aff-body { display:none; margin-top:10px; }
+.aff-body.open { display:block; }
+
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+
+/* ステップガイド */
+.step-guide { display:flex; flex-direction:column; gap:0; }
+.sg-item {
+  display:flex; gap:12px; padding:14px 0;
+  border-bottom:1px solid var(--border); opacity:0.45;
+  transition:opacity 0.2s;
+}
+.sg-item:last-child { border-bottom:none; }
+.sg-item.active, .sg-item.done { opacity:1; }
+.sg-num {
+  width:28px; height:28px; border-radius:50%;
+  background:var(--border); color:var(--muted);
+  font-size:0.72rem; font-weight:700; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+}
+.sg-item.active .sg-num { background:var(--accent); color:#000; }
+.sg-item.done .sg-num { background:var(--success); color:#000; }
+.sg-body { flex:1; }
+.sg-title { font-size:0.85rem; font-weight:700; color:var(--text); margin-bottom:4px; }
+.sg-desc { font-size:0.72rem; color:var(--muted); line-height:1.5; }
+.sg-check { display:none; font-size:0.7rem; color:var(--success); font-weight:700; margin-top:4px; }
+.sg-item.done .sg-check { display:block; }
+.sg-highlight {
+  display:inline-block; margin-top:8px;
+  background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3);
+  color:var(--accent); font-size:0.8rem; font-weight:700;
+  padding:6px 12px; border-radius:6px;
+}
+.sg-note {
+  margin-top:8px; font-size:0.68rem; color:var(--muted);
+  background:rgba(232,48,74,0.06); border-left:2px solid var(--accent2);
+  padding:6px 10px; border-radius:0 4px 4px 0; line-height:1.6;
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚡ PARA NOTE GEN</h1>
+  <p>パラショッパーズ note記事ジェネレーター</p>
+</div>
+
+<div class="main">
+
+  <!-- ステップビジュアル -->
+  <div class="steps-visual">
+    <div class="sv-item active">
+      <span class="sv-num">1</span>
+      <span class="sv-icon">🖼️</span>
+      <div>画像を<br>選ぶ</div>
+    </div>
+    <div class="sv-item active">
+      <span class="sv-num">2</span>
+      <span class="sv-icon">✍️</span>
+      <div>話数を<br>入力</div>
+    </div>
+    <div class="sv-item active">
+      <span class="sv-num">3</span>
+      <span class="sv-icon">📋</span>
+      <div>プロンプト<br>コピー</div>
+    </div>
+    <div class="sv-item active">
+      <span class="sv-num">4</span>
+      <span class="sv-icon">🤖</span>
+      <div>Claudeで<br>記事生成</div>
+    </div>
+  </div>
+
+  <!-- STEP1: 画像アップロード -->
+  <div class="card">
+    <div class="card-title">🖼️ STEP 1 ── 漫画ページを選ぶ（最大30枚）</div>
+    <label class="upload-label" id="dropzone">
+      <input type="file" id="imgInput" accept="image/*" multiple>
+      <span class="upload-icon">📂</span>
+      <p><strong>タップして画像を選択</strong><br>
+      JPG・PNG対応 ／ 最大30枚<br>
+      <span style="font-size:0.65rem;opacity:0.6;">ドロップしてもOK</span></p>
+    </label>
+    <div id="thumbWrap" style="display:none;">
+      <div class="thumb-header">
+        <p class="img-count">選択済：<span id="imgCount">0</span>枚</p>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-sub" style="font-size:0.65rem;padding:4px 8px;" onclick="document.getElementById('imgInput').click()">＋追加</button>
+          <button class="btn btn-del" style="padding:4px 8px;" onclick="clearAll()">全削除</button>
+        </div>
+      </div>
+      <div class="tip">📌 サムネイルをドラッグして順番を入れ替えられます</div>
+      <div class="thumb-grid" id="thumbGrid"></div>
+    </div>
+  </div>
+
+  <!-- STEP2: 話数入力 -->
+  <div class="card">
+    <div class="card-title">✍️ STEP 2 ── 話数を入力する</div>
+    <div class="row2">
+      <div class="fg">
+        <label>話数（必須）</label>
+        <input type="number" id="epNum" placeholder="例: 2" min="1" oninput="onChange()">
+      </div>
+      <div class="fg">
+        <label>サブタイトル（任意）</label>
+        <input type="text" id="epTitle" placeholder="例: 追われる天良木" oninput="onChange()">
+      </div>
+    </div>
+    <div class="vinfo" id="vinfo"></div>
+  </div>
+
+  <!-- アフィリエイト（折りたたみ） -->
+  <div class="card">
+    <div class="card-title aff-toggle" id="affToggle" onclick="toggleAff()">
+      🔗 アフィリエイトリンク設定（任意）<span class="arrow" style="margin-left:auto;color:var(--muted);">›</span>
+    </div>
+    <div class="aff-body" id="affBody">
+      <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px;">9話ごとに自動切替。一度設定すると次回も保存されます。</p>
+      <div id="affLinks"></div>
+      <div class="btn-row" style="margin-top:8px;">
+        <button class="btn btn-sub" onclick="saveAff()">💾 保存する</button>
+        <span id="affSaved" style="font-size:0.72rem;color:var(--success);display:none;align-self:center;">✓ 保存しました</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- STEP3: プロンプト生成 & Claude送信 -->
+  <div class="card" id="step3card">
+    <div class="card-title">📋 STEP 3 ── プロンプトをコピーしてClaudeへ</div>
+
+    <div id="promptSection" style="display:none;">
+      <div class="prompt-out" id="promptOut"></div>
+      <div class="btn-row" style="margin-top:10px; margin-bottom:16px;">
+        <button class="btn btn-copy" onclick="copyPrompt()">📋 プロンプトをコピー</button>
+        <span class="copied-msg" id="copiedMsg">✓ コピーしました！</span>
+      </div>
+    </div>
+
+    <div id="noPromptMsg" style="font-size:0.78rem;color:var(--muted);margin-bottom:14px;">
+      ↑ 話数を入力するとプロンプトが自動生成されます
+    </div>
+
+    <!-- Claudeへ送信ガイド -->
+    <div class="claude-box" id="claudeGuide">
+      <div class="claude-box-title">🤖 Claudeで記事を生成する手順</div>
+
+      <div class="step-guide">
+
+        <div class="sg-item active" id="sg1">
+          <div class="sg-num">1</div>
+          <div class="sg-body">
+            <div class="sg-title">プロンプトをコピーする</div>
+            <div class="sg-desc">上の「📋 プロンプトをコピー」ボタンをタップ</div>
+            <div class="sg-check" id="check1">✓ コピー済み</div>
+          </div>
+        </div>
+
+        <div class="sg-item" id="sg2">
+          <div class="sg-num">2</div>
+          <div class="sg-body">
+            <div class="sg-title">Claudeのチャット画面を開く</div>
+            <div class="sg-desc">↓ のボタンをタップしてClaudeを開く</div>
+            <a href="https://claude.ai/new" target="_blank" class="btn btn-claude" style="margin-top:10px;font-size:0.85rem;padding:12px;">
+              🤖 Claudeを開く（新しいチャット）
+            </a>
+          </div>
+        </div>
+
+        <div class="sg-item" id="sg3">
+          <div class="sg-num">3</div>
+          <div class="sg-body">
+            <div class="sg-title">画像を添付する</div>
+            <div class="sg-desc">Claudeの入力欄左下の</div>
+            <div class="sg-highlight">＋ ボタン → 写真を選択</div>
+            <div class="sg-desc" style="margin-top:4px;">このツールで選んだ画像と<strong style="color:var(--text);">同じ画像</strong>をここで添付してください</div>
+            <div class="sg-note">⚠️ 画像はこのツールからは自動送信できません。<br>写真アプリから同じ画像を選んでください。</div>
+          </div>
+        </div>
+
+        <div class="sg-item" id="sg4">
+          <div class="sg-num">4</div>
+          <div class="sg-body">
+            <div class="sg-title">プロンプトを貼り付けて送信</div>
+            <div class="sg-desc">Claudeの入力欄を長押し →「ペースト」→ 送信ボタン（↑）をタップ</div>
+            <div class="sg-highlight">これで記事が自動生成されます！</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
+
+<script>
+var images = [];
+var dragIdx = null;
+var MAX = 30;
+
+// ===== 画像アップロード =====
+var inp = document.getElementById('imgInput');
+var zone = document.getElementById('dropzone');
+
+inp.addEventListener('change', function() { addFiles(this.files); this.value = ''; });
+zone.addEventListener('dragover', function(e) { if (dragIdx !== null) return; e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', function() { zone.classList.remove('drag'); });
+zone.addEventListener('drop', function(e) {
+  if (dragIdx !== null) return;
+  e.preventDefault(); zone.classList.remove('drag');
+  addFiles(e.dataTransfer.files);
+});
+
+function addFiles(files) {
+  var arr = Array.from(files);
+  var remain = MAX - images.length;
+  if (remain <= 0) { alert('最大' + MAX + '枚までです'); return; }
+  arr.slice(0, remain).forEach(function(f) {
+    var r = new FileReader();
+    r.onload = function(e) {
+      images.push({ dataUrl: e.target.result, name: f.name });
+      renderThumbs();
+      onChange();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function renderThumbs() {
+  var grid = document.getElementById('thumbGrid');
+  var wrap = document.getElementById('thumbWrap');
+  grid.innerHTML = '';
+  if (images.length === 0) { wrap.style.display = 'none'; return; }
+  wrap.style.display = 'block';
+  document.getElementById('imgCount').textContent = images.length;
+
+  images.forEach(function(img, i) {
+    var d = document.createElement('div');
+    d.className = 'thumb';
+    d.draggable = true;
+    d.innerHTML = '<img src="' + img.dataUrl + '"><span class="thumb-n">' + (i+1) + '</span><button class="thumb-x" onclick="delImg(' + i + ')">✕</button>';
+
+    // マウスドラッグ
+    d.addEventListener('dragstart', function(e) { dragIdx = i; setTimeout(function(){ d.classList.add('dragging'); }, 0); e.dataTransfer.effectAllowed = 'move'; });
+    d.addEventListener('dragend', function() { dragIdx = null; d.classList.remove('dragging'); document.querySelectorAll('.thumb').forEach(function(t){ t.classList.remove('over'); }); });
+    d.addEventListener('dragover', function(e) { e.preventDefault(); document.querySelectorAll('.thumb').forEach(function(t){ t.classList.remove('over'); }); d.classList.add('over'); });
+    d.addEventListener('drop', function(e) {
+      e.preventDefault(); d.classList.remove('over');
+      if (dragIdx === null || dragIdx === i) return;
+      var m = images.splice(dragIdx, 1)[0]; images.splice(i, 0, m); dragIdx = null; renderThumbs();
+    });
+
+    // タッチ（iPad）
+    d.addEventListener('touchstart', function() { dragIdx = i; d.classList.add('dragging'); }, { passive: true });
+    d.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      var t = e.touches[0];
+      document.querySelectorAll('.thumb').forEach(function(x){ x.classList.remove('over'); });
+      var el = document.elementFromPoint(t.clientX, t.clientY);
+      if (el) { var tgt = el.closest('.thumb'); if (tgt && tgt !== d) tgt.classList.add('over'); }
+    }, { passive: false });
+    d.addEventListener('touchend', function(e) {
+      d.classList.remove('dragging');
+      document.querySelectorAll('.thumb').forEach(function(x){ x.classList.remove('over'); });
+      var t = e.changedTouches[0];
+      var el = document.elementFromPoint(t.clientX, t.clientY);
+      if (el) {
+        var tgt = el.closest('.thumb');
+        if (tgt && tgt !== d) {
+          var ti = parseInt(tgt.querySelector('.thumb-n').textContent) - 1;
+          if (!isNaN(ti) && ti !== i) { var m = images.splice(i, 1)[0]; images.splice(ti, 0, m); renderThumbs(); }
+        }
+      }
+      dragIdx = null;
+    });
+
+    grid.appendChild(d);
+  });
+}
+
+function delImg(i) { images.splice(i, 1); renderThumbs(); onChange(); }
+function clearAll() { images = []; renderThumbs(); onChange(); }
+
+// ===== プロンプト生成 =====
+function onChange() {
+  loadAff();
+  var ep = parseInt(document.getElementById('epNum').value) || 0;
+  var title = document.getElementById('epTitle').value.trim();
+  var pOut = document.getElementById('promptOut');
+  var pSec = document.getElementById('promptSection');
+  var noMsg = document.getElementById('noPromptMsg');
+  var vinfo = document.getElementById('vinfo');
+
+  if (!ep) {
+    pSec.style.display = 'none';
+    noMsg.style.display = 'block';
+    vinfo.style.display = 'none';
+    return;
+  }
+
+  var vol = Math.ceil(ep / 9);
+  var affUrl = affData[vol] || '';
+  var tPart = title ? '「' + title + '」' : '';
+  var imgInfo = images.length > 0 ? '（画像' + images.length + '枚を添付します）' : '（画像を添付してください）';
+  var affPart = affUrl ? '\n\n記事末尾に以下のリンクを自然に挿入してください（URLそのまま）：\n▼『パラショッパーズ』第' + vol + '巻はこちら\n' + affUrl : '';
+
+  vinfo.style.display = 'block';
+  vinfo.textContent = '📚 第' + ep + '話 → 第' + vol + '巻に相当' + (affUrl ? '（リンク設定済み✓）' : '（アフィリエイトリンク未設定）');
+
+  var prompt = 'これは漫画「パラショッパーズ」（週刊少年サンデー掲載、作者：福地翼）第' + ep + '話' + tPart + 'のページ画像です' + imgInfo + '。\n\n画像を読んで、以下の構成でnoteに掲載する記事を書いてください。\n\n【構成】\n① キャッチーなタイトル\n② ⚠️ネタバレ注意の一言\n③ 今話のあらすじ（読者が流れを追えるよう具体的に。重要シーンは太字で）\n④ 見どころ・感想（「なぜこのシーンが熱いのか」を主観的な熱量で）\n⑤ 次話への期待・引き\n\n【ルール】\n・ターゲット：パラショッパーズが気になっている人・読み始めた人\n・トーン：熱量あり、読みやすく、テンポよく\n・改行・太字を積極的に使ってnoteで読みやすく\n・絵文字は適度に\n・最後にハッシュタグ10個以上\n　必須：#パラショッパーズ #福地翼 #週刊少年サンデー #サンデーうぇぶり\n\nタイトルから始めて、そのままnoteにコピペできる形式で出力してください。' + affPart;
+
+  pOut.textContent = prompt;
+  pSec.style.display = 'block';
+  noMsg.style.display = 'none';
+}
+
+function copyPrompt() {
+  var text = document.getElementById('promptOut').textContent;
+  if (!text) return;
+  navigator.clipboard.writeText(text).then(function() {
+    var el = document.getElementById('copiedMsg');
+    el.className = 'copied-msg on';
+    setTimeout(function(){ el.className = 'copied-msg'; }, 2500);
+    // ステップ1完了 → ステップ2〜4をアクティブに
+    document.getElementById('sg1').className = 'sg-item done';
+    document.getElementById('sg2').className = 'sg-item active';
+    document.getElementById('sg3').className = 'sg-item active';
+    document.getElementById('sg4').className = 'sg-item active';
+    // スクロールしてガイドを表示
+    document.getElementById('claudeGuide').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+// ===== アフィリエイト =====
+var affData = {};
+function loadAff() {
+  try { var s = localStorage.getItem('para_aff'); if (s) affData = JSON.parse(s); } catch(e) {}
+  if (!affData[1]) affData[1] = 'https://amzn.to/3MO2hjh';
+}
+function saveAff() {
+  for (var v = 1; v <= 8; v++) { var el = document.getElementById('aff'+v); if (el) affData[v] = el.value.trim(); }
+  try { localStorage.setItem('para_aff', JSON.stringify(affData)); } catch(e) {}
+  var el = document.getElementById('affSaved');
+  el.style.display = 'inline';
+  setTimeout(function(){ el.style.display = 'none'; }, 2000);
+  onChange();
+}
+function toggleAff() {
+  var toggle = document.getElementById('affToggle');
+  var body = document.getElementById('affBody');
+  toggle.classList.toggle('open');
+  body.classList.toggle('open');
+  if (body.classList.contains('open')) renderAff();
+}
+function renderAff() {
+  loadAff();
+  var c = document.getElementById('affLinks'); c.innerHTML = '';
+  for (var v = 1; v <= 8; v++) {
+    var row = document.createElement('div'); row.className = 'aff-row';
+    row.innerHTML = '<span class="vol-tag">' + v + '巻</span><input class="aff-in" type="text" id="aff' + v + '" placeholder="https://amzn.to/..." value="' + (affData[v] || '') + '">';
+    c.appendChild(row);
+  }
+}
+
+loadAff();
+</script>
+</body>
+</html>
