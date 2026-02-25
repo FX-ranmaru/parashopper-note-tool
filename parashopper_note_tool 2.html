@@ -1,0 +1,581 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>パラショッパーズ note記事ジェネレーター</title>
+<style>
+:root {
+  --bg: #0d0d0f;
+  --surface: #15151a;
+  --surface2: #1e1e26;
+  --border: #2a2a38;
+  --accent: #f5a623;
+  --accent2: #e8304a;
+  --text: #e8e8f0;
+  --muted: #888899;
+  --success: #3ecf8e;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+  font-size: 14px;
+  min-height: 100vh;
+}
+.header {
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; align-items: center; gap: 10px;
+  position: sticky; top: 0; z-index: 100;
+}
+.header h1 { font-size: 1.2rem; color: var(--accent); font-weight: 900; letter-spacing: 2px; }
+.header p { font-size: 0.68rem; color: var(--muted); }
+.stepbar {
+  display: flex; align-items: center; gap: 4px;
+  padding: 10px 20px; border-bottom: 1px solid var(--border);
+  background: var(--surface); overflow-x: auto;
+}
+.sbtn {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; border-radius: 20px;
+  border: none; background: none; cursor: pointer;
+  color: var(--muted); font-size: 0.75rem; font-weight: 700;
+  white-space: nowrap; font-family: inherit; transition: all 0.2s;
+}
+.sbtn.active { background: rgba(245,166,35,0.15); color: var(--accent); }
+.sbtn.done { color: var(--success); }
+.snum {
+  width: 20px; height: 20px; border-radius: 50%;
+  background: var(--border); color: var(--muted);
+  font-size: 0.65rem; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.sbtn.active .snum { background: var(--accent); color: #000; }
+.sbtn.done .snum { background: var(--success); color: #000; }
+.sarrow { color: var(--border); font-size: 0.9rem; flex-shrink: 0; }
+.layout {
+  display: grid; grid-template-columns: 1fr 1fr;
+  height: calc(100vh - 95px);
+}
+.pane { padding: 18px 20px; overflow-y: auto; }
+.pane-r { background: var(--surface); border-left: 1px solid var(--border); }
+.sp { display: none; } .sp.on { display: block; }
+.rp { display: none; } .rp.on { display: block; }
+.stitle {
+  font-size: 0.62rem; font-weight: 700; letter-spacing: 2px;
+  text-transform: uppercase; color: var(--muted);
+  margin-bottom: 12px; display: flex; align-items: center; gap: 8px;
+}
+.stitle::after { content:''; flex:1; height:1px; background:var(--border); }
+.upload-label {
+  display: block; border: 2px dashed var(--border);
+  border-radius: 10px; padding: 28px 16px;
+  text-align: center; cursor: pointer;
+  background: var(--surface2); transition: all 0.2s;
+}
+.upload-label:hover, .upload-label.drag {
+  border-color: var(--accent); background: rgba(245,166,35,0.05);
+}
+#imgInput { display: none; }
+.upload-icon { font-size: 2rem; display: block; margin-bottom: 8px; }
+.upload-label p { color: var(--muted); line-height: 1.6; font-size: 0.82rem; }
+.upload-label strong { color: var(--accent); }
+.thumb-header {
+  display: flex; justify-content: space-between; align-items: center;
+  margin: 12px 0 8px;
+}
+.img-count { font-size: 0.72rem; color: var(--muted); }
+.img-count span { color: var(--accent); font-weight: 700; }
+.thumb-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; }
+.thumb {
+  position: relative; aspect-ratio: 3/4;
+  border-radius: 6px; overflow: hidden;
+  border: 1px solid var(--border); background: var(--surface2);
+  cursor: grab; user-select: none; transition: transform 0.15s, opacity 0.15s;
+}
+.thumb img { width:100%; height:100%; object-fit:cover; pointer-events:none; display:block; }
+.thumb-n {
+  position:absolute; top:2px; left:2px;
+  background:rgba(0,0,0,0.85); color:#fff;
+  font-size:0.58rem; font-weight:700; padding:1px 4px; border-radius:2px;
+}
+.thumb-x {
+  position:absolute; top:2px; right:2px;
+  background:var(--accent2); color:#fff; border:none; border-radius:3px;
+  width:16px; height:16px; font-size:0.58rem; cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+}
+.thumb.dragging { opacity:0.25; transform:scale(0.93); }
+.thumb.over { outline:2px solid var(--accent); transform:scale(1.05); }
+.row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px; }
+.fg { margin-bottom:10px; }
+label { display:block; font-size:0.68rem; color:var(--muted); margin-bottom:4px; }
+input[type=text], input[type=number] {
+  width:100%; background:var(--bg); border:1px solid var(--border);
+  color:var(--text); border-radius:6px; padding:8px 10px;
+  font-family:inherit; font-size:0.85rem; outline:none;
+}
+input:focus { border-color:var(--accent); }
+.ebox {
+  width:100%; background:var(--bg); border:1px solid var(--border);
+  color:var(--text); border-radius:6px; padding:8px 10px;
+  font-family:inherit; font-size:0.82rem; line-height:1.7;
+  outline:none; min-height:75px; white-space:pre-wrap; word-break:break-word; cursor:text;
+}
+.ebox.tall { min-height:115px; }
+.ebox:focus { border-color:var(--accent); }
+.ebox[data-ph]:empty::before { content:attr(data-ph); color:#444455; pointer-events:none; }
+.aff-box { background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:12px; margin-bottom:12px; }
+.aff-row { display:flex; align-items:center; gap:7px; margin-bottom:6px; }
+.aff-row:last-child { margin-bottom:0; }
+.vol-tag { font-size:0.62rem; font-weight:700; color:var(--accent); background:rgba(245,166,35,0.12); padding:2px 5px; border-radius:3px; min-width:26px; text-align:center; flex-shrink:0; }
+.aff-in { flex:1; background:var(--bg); border:1px solid var(--border); color:var(--text); border-radius:4px; padding:5px 8px; font-family:inherit; font-size:0.72rem; outline:none; }
+.aff-in:focus { border-color:var(--accent); }
+.btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:10px 16px; border-radius:6px; font-family:inherit; font-size:0.82rem; font-weight:700; cursor:pointer; border:none; transition:all 0.15s; }
+.btn-main { background:var(--accent); color:#000; width:100%; padding:12px; margin-top:6px; }
+.btn-main:hover { background:#ffc04d; }
+.btn-main:disabled { background:var(--border); color:var(--muted); cursor:not-allowed; }
+.btn-sub { background:transparent; color:var(--muted); border:1px solid var(--border); font-size:0.75rem; padding:8px 12px; }
+.btn-sub:hover { border-color:var(--accent); color:var(--accent); }
+.btn-copy { background:var(--success); color:#000; padding:9px 16px; font-size:0.75rem; }
+.btn-copy:hover { background:#5ee8a8; }
+.btn-del { background:transparent; border:1px solid var(--border); color:var(--muted); padding:9px 14px; font-size:0.75rem; }
+.btn-del:hover { border-color:var(--accent2); color:var(--accent2); }
+.btn-row { display:flex; gap:8px; margin-top:8px; }
+.tip { font-size:0.68rem; color:var(--muted); line-height:1.5; background:rgba(245,166,35,0.04); border-left:2px solid var(--accent); padding:6px 10px; border-radius:0 4px 4px 0; margin-bottom:10px; }
+.vinfo { display:none; font-size:0.68rem; color:var(--muted); padding:5px 10px; background:rgba(245,166,35,0.05); border-left:2px solid var(--accent); border-radius:0 4px 4px 0; margin-bottom:10px; }
+.loading { display:none; align-items:center; gap:10px; color:var(--muted); font-size:0.8rem; padding:12px 0; }
+.loading.on { display:flex; }
+.spin { width:16px; height:16px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; flex-shrink:0; }
+@keyframes spin { to { transform:rotate(360deg); } }
+.progress-wrap { margin:6px 0 0; }
+.progress-bar { height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+.progress-fill { height:100%; background:var(--accent); border-radius:2px; transition:width 0.3s; width:0%; }
+.progress-text { font-size:0.65rem; color:var(--muted); margin-top:3px; }
+.preview-box, .out-box { background:var(--bg); border:1px solid var(--accent); border-radius:8px; padding:14px; font-size:0.8rem; line-height:1.8; white-space:pre-wrap; word-break:break-word; color:var(--text); min-height:160px; }
+.out-box { border-color:var(--border); }
+.preview-ph, .out-ph { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:160px; color:var(--muted); font-size:0.75rem; gap:8px; text-align:center; }
+.out-actions { display:flex; gap:8px; margin-top:10px; align-items:center; }
+.copied { color:var(--success); font-size:0.72rem; display:none; }
+.copied.on { display:inline; }
+.ai-badge { display:inline-flex; align-items:center; gap:4px; background:rgba(245,166,35,0.12); border:1px solid rgba(245,166,35,0.3); color:var(--accent); font-size:0.6rem; font-weight:700; padding:2px 7px; border-radius:3px; margin-bottom:8px; }
+::-webkit-scrollbar { width:4px; }
+::-webkit-scrollbar-thumb { background:var(--border); border-radius:2px; }
+@media (max-width:700px) {
+  .layout { grid-template-columns:1fr; height:auto; }
+  .pane-r { border-left:none; border-top:1px solid var(--border); }
+  .thumb-grid { grid-template-columns:repeat(4,1fr); }
+  .row2 { grid-template-columns:1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚡ PARA NOTE GEN</h1>
+  <p>パラショッパーズ note記事ジェネレーター</p>
+</div>
+
+<div class="stepbar">
+  <button class="sbtn active" id="sb1" onclick="goStep(1)"><span class="snum">1</span>画像アップロード</button>
+  <span class="sarrow">›</span>
+  <button class="sbtn" id="sb2" onclick="goStep(2)"><span class="snum">2</span>あらすじ確認・編集</button>
+  <span class="sarrow">›</span>
+  <button class="sbtn" id="sb3" onclick="goStep(3)"><span class="snum">3</span>note記事を生成</button>
+</div>
+
+<div class="layout">
+  <div class="pane">
+
+    <!-- STEP1 左 -->
+    <div class="sp on" id="ls1">
+      <div class="stitle">漫画ページをアップロード（最大30枚）</div>
+      <label class="upload-label" id="dropzone">
+        <input type="file" id="imgInput" accept="image/*" multiple>
+        <span class="upload-icon">🖼️</span>
+        <p><strong>タップして画像を選択</strong><br>JPG・PNG・WebP対応 ／ 最大30枚<br>
+        <span style="font-size:0.68rem;opacity:0.6;">ここにドロップしてもOK</span></p>
+      </label>
+      <div id="thumbWrap" style="display:none;">
+        <div class="thumb-header">
+          <p class="img-count">読み込み済：<span id="imgCount">0</span>枚</p>
+          <div style="display:flex;gap:6px;">
+            <button class="btn btn-sub" style="font-size:0.68rem;padding:4px 10px;" onclick="addMore()">＋追加</button>
+            <button class="btn btn-del" style="padding:4px 10px;font-size:0.68rem;" onclick="clearAll()">全削除</button>
+          </div>
+        </div>
+        <div class="tip">📌 サムネイルをドラッグして順番を入れ替えられます（iPadはタッチ対応）</div>
+        <div class="thumb-grid" id="thumbGrid"></div>
+      </div>
+      <button class="btn btn-main" id="analyzeBtn" onclick="doAnalyze()" disabled>🔍 AIにページを読み込ませる</button>
+    </div>
+
+    <!-- STEP2 左 -->
+    <div class="sp" id="ls2">
+      <div class="stitle">話数・基本情報</div>
+      <div class="row2">
+        <div class="fg"><label>話数（必須）</label><input type="number" id="epNum" placeholder="例: 2" min="1" oninput="updateVol()"></div>
+        <div class="fg"><label>サブタイトル（任意）</label><input type="text" id="epTitle" placeholder="例: 追われる天良木"></div>
+      </div>
+      <div class="vinfo" id="vinfo"></div>
+      <div class="stitle">あらすじ（AIが自動入力・編集可）</div>
+      <div class="fg"><label>登場キャラクター・能力</label><div class="ebox" contenteditable="true" id="f_char" data-ph="AIが自動入力します"></div></div>
+      <div class="fg"><label>今話のあらすじ・出来事</label><div class="ebox tall" contenteditable="true" id="f_summ" data-ph="AIが自動入力します"></div></div>
+      <div class="fg"><label>見どころ・感想（任意）</label><div class="ebox" contenteditable="true" id="f_high" data-ph="AIが自動入力します"></div></div>
+      <div class="fg"><label>次話への引き（任意）</label><div class="ebox" contenteditable="true" id="f_cliff" data-ph="AIが自動入力します"></div></div>
+      <div class="btn-row">
+        <button class="btn btn-sub" onclick="goStep(1)">← 画像に戻る</button>
+        <button class="btn btn-main" style="margin-top:0;" onclick="goStep(3)">記事生成へ →</button>
+      </div>
+    </div>
+
+    <!-- STEP3 左 -->
+    <div class="sp" id="ls3">
+      <div class="stitle">アフィリエイトリンク設定</div>
+      <div class="aff-box">
+        <p style="font-size:0.68rem;color:var(--muted);margin-bottom:10px;">9話ごとに自動切替。1度設定すれば次回も保存されます。</p>
+        <div id="affLinks"></div>
+        <div class="tip" style="margin-top:8px;">💡 URLが空の巻は「近日公開予定」と表示されます</div>
+      </div>
+      <div class="btn-row" style="margin-bottom:10px;">
+        <button class="btn btn-sub" onclick="goStep(2)">← あらすじに戻る</button>
+        <button class="btn btn-sub" style="border-color:var(--success);color:var(--success);" onclick="saveAff()">💾 リンクを保存</button>
+      </div>
+      <button class="btn btn-main" id="genBtn" onclick="doGenerate()">✨ note記事を生成する</button>
+    </div>
+
+  </div>
+
+  <div class="pane pane-r">
+
+    <!-- STEP1 右 -->
+    <div class="rp on" id="rs1">
+      <div class="stitle">AIあらすじ生成プレビュー</div>
+      <div class="loading" id="aLoad">
+        <div class="spin"></div>
+        <div style="flex:1;">
+          <div id="aStatus">解析中...</div>
+          <div class="progress-wrap">
+            <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+            <div class="progress-text" id="progText"></div>
+          </div>
+        </div>
+      </div>
+      <div class="preview-ph" id="prevPh">
+        <span style="font-size:2rem;opacity:0.3;">🤖</span>
+        <span>画像をアップロードして<br>「AIにページを読み込ませる」を<br>押すとあらすじが生成されます</span>
+      </div>
+      <div class="preview-box" id="prevBox" style="display:none;"></div>
+      <div id="prevActs" style="display:none;margin-top:10px;">
+        <div class="ai-badge">✦ AI生成済み</div>
+        <p style="font-size:0.7rem;color:var(--muted);margin-bottom:8px;line-height:1.6;">内容を確認して「このあらすじで次へ」を押してください。<br>STEP2で自由に編集できます。</p>
+        <button class="btn btn-main" onclick="applyNext()">このあらすじで次へ →</button>
+        <button class="btn btn-sub" style="width:100%;margin-top:6px;" onclick="reAnalyze()">🔄 もう一度生成する</button>
+      </div>
+    </div>
+
+    <!-- STEP2 右 -->
+    <div class="rp" id="rs2">
+      <div class="stitle">編集のヒント</div>
+      <div class="tip">✏️ 各フィールドは直接クリックして編集・コピペできます</div>
+      <div class="tip" style="border-color:var(--accent2);">⚠️ ネタバレの深さはご自身で調整してください</div>
+      <div class="tip">💡「見どころ」と「次話への引き」がnoteの熱量を決めます！</div>
+    </div>
+
+    <!-- STEP3 右 -->
+    <div class="rp" id="rs3">
+      <div class="stitle">生成された記事</div>
+      <div class="loading" id="gLoad"><div class="spin"></div> AIが記事を執筆中...</div>
+      <div class="out-ph" id="outPh">
+        <span style="font-size:2rem;opacity:0.3;">📝</span>
+        <span>「note記事を生成する」を押してください</span>
+      </div>
+      <div class="out-box" id="outBox" style="display:none;"></div>
+      <div class="out-actions" id="outActs" style="display:none;">
+        <span class="copied" id="copiedMsg">✓ コピーしました！</span>
+        <button class="btn btn-del" onclick="clearOut()">クリア</button>
+        <button class="btn btn-copy" onclick="doCopy()">📋 コピー</button>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+var images = [];
+var aiText = null;
+var dragIdx = null;
+var MAX = 30;
+
+function goStep(n) {
+  [1,2,3].forEach(function(i) {
+    document.getElementById('sb'+i).className = 'sbtn' + (i < n ? ' done' : i === n ? ' active' : '');
+    document.getElementById('ls'+i).className = 'sp' + (i === n ? ' on' : '');
+    document.getElementById('rs'+i).className = 'rp' + (i === n ? ' on' : '');
+  });
+}
+
+var inp = document.getElementById('imgInput');
+var zone = document.getElementById('dropzone');
+
+inp.addEventListener('change', function() { addFiles(this.files); this.value = ''; });
+zone.addEventListener('dragover', function(e) { if (dragIdx !== null) return; e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', function() { zone.classList.remove('drag'); });
+zone.addEventListener('drop', function(e) {
+  if (dragIdx !== null) return;
+  e.preventDefault(); zone.classList.remove('drag');
+  addFiles(e.dataTransfer.files);
+});
+
+function addMore() { inp.click(); }
+
+function addFiles(files) {
+  var arr = Array.from(files);
+  var remain = MAX - images.length;
+  if (remain <= 0) { alert('最大' + MAX + '枚までです'); return; }
+  arr.slice(0, remain).forEach(function(f) {
+    var r = new FileReader();
+    r.onload = function(e) {
+      var url = e.target.result;
+      images.push({ dataUrl: url, base64: url.split(',')[1], mime: f.type || 'image/jpeg' });
+      renderThumbs();
+    };
+    r.readAsDataURL(f);
+  });
+}
+
+function renderThumbs() {
+  var grid = document.getElementById('thumbGrid');
+  var wrap = document.getElementById('thumbWrap');
+  grid.innerHTML = '';
+  if (images.length === 0) { wrap.style.display = 'none'; document.getElementById('analyzeBtn').disabled = true; return; }
+  wrap.style.display = 'block';
+  document.getElementById('analyzeBtn').disabled = false;
+  document.getElementById('imgCount').textContent = images.length;
+
+  images.forEach(function(img, i) {
+    var d = document.createElement('div');
+    d.className = 'thumb'; d.draggable = true;
+    d.innerHTML = '<img src="' + img.dataUrl + '"><span class="thumb-n">' + (i+1) + '</span><button class="thumb-x" onclick="delImg(' + i + ')">✕</button>';
+
+    // マウスドラッグ
+    d.addEventListener('dragstart', function(e) { dragIdx = i; setTimeout(function(){ d.classList.add('dragging'); }, 0); e.dataTransfer.effectAllowed = 'move'; });
+    d.addEventListener('dragend', function() { dragIdx = null; d.classList.remove('dragging'); document.querySelectorAll('.thumb').forEach(function(t){ t.classList.remove('over'); }); });
+    d.addEventListener('dragover', function(e) { e.preventDefault(); document.querySelectorAll('.thumb').forEach(function(t){ t.classList.remove('over'); }); d.classList.add('over'); });
+    d.addEventListener('drop', function(e) {
+      e.preventDefault(); d.classList.remove('over');
+      if (dragIdx === null || dragIdx === i) return;
+      var moved = images.splice(dragIdx, 1)[0]; images.splice(i, 0, moved); dragIdx = null; renderThumbs();
+    });
+
+    // タッチ操作（iPad対応）
+    var tsIdx = null, tsEl = null;
+    d.addEventListener('touchstart', function(e) { tsIdx = i; tsEl = d; d.classList.add('dragging'); }, { passive: true });
+    d.addEventListener('touchmove', function(e) {
+      e.preventDefault();
+      var t = e.touches[0];
+      var el = document.elementFromPoint(t.clientX, t.clientY);
+      document.querySelectorAll('.thumb').forEach(function(x){ x.classList.remove('over'); });
+      if (el) { var tgt = el.closest('.thumb'); if (tgt && tgt !== d) tgt.classList.add('over'); }
+    }, { passive: false });
+    d.addEventListener('touchend', function(e) {
+      d.classList.remove('dragging');
+      document.querySelectorAll('.thumb').forEach(function(x){ x.classList.remove('over'); });
+      var t = e.changedTouches[0];
+      var el = document.elementFromPoint(t.clientX, t.clientY);
+      if (el) {
+        var tgt = el.closest('.thumb');
+        if (tgt && tgt !== d) {
+          var tIdx = parseInt(tgt.querySelector('.thumb-n').textContent) - 1;
+          if (!isNaN(tIdx) && tIdx !== tsIdx) { var m = images.splice(tsIdx, 1)[0]; images.splice(tIdx, 0, m); renderThumbs(); }
+        }
+      }
+      tsIdx = null;
+    });
+
+    grid.appendChild(d);
+  });
+}
+
+function delImg(i) { images.splice(i, 1); renderThumbs(); }
+function clearAll() { images = []; renderThumbs(); }
+
+function callAPI(messages, maxTok) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'anthropic-dangerous-direct-browser-access': 'true' },
+    body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: maxTok || 600, messages: messages })
+  }).then(function(r){ return r.json(); }).then(function(d){
+    if (d.error) throw new Error(d.error.message || 'APIエラー');
+    return (d.content || []).map(function(b){ return b.text || ''; }).join('');
+  });
+}
+
+async function doAnalyze() {
+  if (images.length === 0) return;
+  document.getElementById('prevPh').style.display = 'none';
+  document.getElementById('prevBox').style.display = 'none';
+  document.getElementById('prevActs').style.display = 'none';
+  document.getElementById('aLoad').className = 'loading on';
+  document.getElementById('analyzeBtn').disabled = true;
+
+  var total = images.length;
+  var notes = [];
+
+  function setProg(cur, msg) {
+    var pct = Math.round((cur / (total + 1)) * 100);
+    document.getElementById('progFill').style.width = pct + '%';
+    document.getElementById('progText').textContent = msg;
+    document.getElementById('aStatus').textContent = 'ページを読み取り中... (' + cur + ' / ' + total + ')';
+  }
+
+  try {
+    for (var i = 0; i < total; i++) {
+      setProg(i, (i+1) + '枚目を解析中...');
+      var img = images[i];
+      var text = await callAPI([{
+        role: 'user',
+        content: [
+          { type: 'image', source: { type: 'base64', media_type: img.mime, data: img.base64 } },
+          { type: 'text', text: 'これは漫画「パラショッパーズ」の' + (i+1) + 'ページ目です（全' + total + 'ページ中）。このページに描かれているキャラクター・セリフ・行動・能力・場面を詳しく箇条書きで書いてください。' }
+        ]
+      }], 500);
+      notes.push('【' + (i+1) + 'ページ】\n' + text.trim());
+    }
+
+    document.getElementById('aStatus').textContent = 'あらすじを生成中...';
+    document.getElementById('progFill').style.width = '95%';
+    document.getElementById('progText').textContent = 'まとめています...';
+
+    var result = await callAPI([{
+      role: 'user',
+      content: '以下は漫画「パラショッパーズ」（週刊少年サンデー掲載、作者：福地翼）の1話分・全' + total + 'ページのメモです。\n\n' + notes.join('\n\n') + '\n\n---\n以下のフォーマットで出力してください：\n\n【登場キャラクター・能力】\n（箇条書き）\n\n【今話のあらすじ・出来事】\n（時系列で箇条書き5〜10項目）\n\n【見どころ・感想】\n（3〜5点）\n\n【次話への引き・気になる点】\n（なければ「特になし」）'
+    }], 1000);
+
+    document.getElementById('progFill').style.width = '100%';
+    document.getElementById('progText').textContent = '完了！';
+    aiText = result;
+    document.getElementById('prevBox').textContent = result;
+    document.getElementById('prevBox').style.display = 'block';
+    document.getElementById('prevActs').style.display = 'block';
+  } catch(e) {
+    document.getElementById('prevBox').textContent = 'エラー: ' + e.message;
+    document.getElementById('prevBox').style.display = 'block';
+  }
+
+  document.getElementById('aLoad').className = 'loading';
+  document.getElementById('analyzeBtn').disabled = false;
+}
+
+function reAnalyze() {
+  document.getElementById('prevBox').style.display = 'none';
+  document.getElementById('prevActs').style.display = 'none';
+  document.getElementById('prevPh').style.display = 'flex';
+  doAnalyze();
+}
+
+function extract(text, from, to) {
+  var s = text.indexOf(from); if (s === -1) return '';
+  s += from.length;
+  var e = to ? text.indexOf(to) : text.length; if (e === -1) e = text.length;
+  return text.slice(s, e).trim();
+}
+
+function applyNext() {
+  if (!aiText) { goStep(2); return; }
+  document.getElementById('f_char').innerText = extract(aiText, '【登場キャラクター・能力】', '【今話のあらすじ・出来事】');
+  document.getElementById('f_summ').innerText = extract(aiText, '【今話のあらすじ・出来事】', '【見どころ・感想】');
+  document.getElementById('f_high').innerText = extract(aiText, '【見どころ・感想】', '【次話への引き・気になる点】');
+  var cliff = extract(aiText, '【次話への引き・気になる点】', null);
+  document.getElementById('f_cliff').innerText = cliff === '特になし' ? '' : cliff;
+  goStep(2);
+}
+
+function updateVol() {
+  var ep = parseInt(document.getElementById('epNum').value) || 0;
+  var el = document.getElementById('vinfo');
+  if (!ep) { el.style.display = 'none'; return; }
+  var vol = Math.ceil(ep / 9);
+  el.style.display = 'block';
+  el.textContent = '📚 第' + ep + '話 → 第' + vol + '巻に相当（' + vol + '巻リンクを自動使用）';
+}
+
+var affData = {};
+function loadAff() {
+  try { var s = localStorage.getItem('para_aff'); if (s) affData = JSON.parse(s); } catch(e) {}
+  if (!affData[1]) affData[1] = 'https://amzn.to/3MO2hjh';
+}
+function saveAff() {
+  for (var v = 1; v <= 8; v++) { var el = document.getElementById('aff'+v); if (el) affData[v] = el.value.trim(); }
+  try { localStorage.setItem('para_aff', JSON.stringify(affData)); } catch(e) {}
+  alert('保存しました！');
+}
+function initAff() {
+  loadAff();
+  var c = document.getElementById('affLinks'); c.innerHTML = '';
+  for (var v = 1; v <= 8; v++) {
+    var row = document.createElement('div'); row.className = 'aff-row';
+    row.innerHTML = '<span class="vol-tag">' + v + '巻</span><input class="aff-in" type="text" id="aff' + v + '" placeholder="https://amzn.to/..." value="' + (affData[v] || '') + '">';
+    c.appendChild(row);
+  }
+}
+function getAff(vol) { var el = document.getElementById('aff'+vol); return el ? el.value.trim() : (affData[vol] || ''); }
+
+async function doGenerate() {
+  var ep = document.getElementById('epNum').value;
+  var title = document.getElementById('epTitle').value.trim();
+  var chars = (document.getElementById('f_char').innerText || '').trim();
+  var summ  = (document.getElementById('f_summ').innerText || '').trim();
+  var high  = (document.getElementById('f_high').innerText || '').trim();
+  var cliff = (document.getElementById('f_cliff').innerText || '').trim();
+
+  if (!ep || !summ) { alert('話数とあらすじは必須です！STEP2で確認してください。'); goStep(2); return; }
+
+  var vol = Math.ceil(parseInt(ep) / 9);
+  var affUrl = getAff(vol);
+  var tPart = title ? '「' + title + '」' : '';
+  var affPart = affUrl ? '\n\n記事末尾に以下のアフィリエイトリンクを自然に挿入してください（URLはそのまま）：\n▼『パラショッパーズ』第' + vol + '巻はこちら\n' + affUrl : '';
+  var prompt = 'あなたは漫画ブロガーです。週刊少年サンデー掲載「パラショッパーズ」（作者：福地翼）の第' + ep + '話' + tPart + 'のnote記事を書いてください。\n\n【登場キャラ・能力】\n' + (chars||'（なし）') + '\n\n【あらすじ・出来事】\n' + summ + '\n\n【見どころ・感想】\n' + (high||'（なし）') + '\n\n【次話への引き】\n' + (cliff||'（なし）') + '\n\n---\n・ターゲット：パラショッパーズが気になる人・読み始めた人\n・トーン：熱量あり、読みやすく、テンポよく\n・構成：①キャッチーなタイトル ②あらすじ（太字・改行で読みやすく） ③見どころ・感想 ④次話への期待\n・絵文字は適度に\n・最後にハッシュタグ10個以上（#パラショッパーズ #福地翼 #週刊少年サンデー 必須）' + affPart + '\n\nタイトルから始めて、そのままnoteにコピペできる形式で書いてください。';
+
+  document.getElementById('outPh').style.display = 'none';
+  document.getElementById('outBox').style.display = 'none';
+  document.getElementById('outActs').style.display = 'none';
+  document.getElementById('gLoad').className = 'loading on';
+  document.getElementById('genBtn').disabled = true;
+
+  try {
+    var result = await callAPI([{ role: 'user', content: prompt }], 1000);
+    document.getElementById('outBox').textContent = result;
+    document.getElementById('outBox').style.display = 'block';
+    document.getElementById('outActs').style.display = 'flex';
+    document.getElementById('outPh').style.display = 'none';
+  } catch(e) {
+    document.getElementById('outBox').textContent = 'エラー: ' + e.message;
+    document.getElementById('outBox').style.display = 'block';
+    document.getElementById('outActs').style.display = 'flex';
+  }
+  document.getElementById('gLoad').className = 'loading';
+  document.getElementById('genBtn').disabled = false;
+}
+
+function doCopy() {
+  var text = document.getElementById('outBox').textContent;
+  navigator.clipboard.writeText(text).then(function() {
+    var el = document.getElementById('copiedMsg'); el.className = 'copied on';
+    setTimeout(function(){ el.className = 'copied'; }, 2500);
+  });
+}
+
+function clearOut() {
+  document.getElementById('outBox').style.display = 'none';
+  document.getElementById('outActs').style.display = 'none';
+  document.getElementById('outPh').style.display = 'flex';
+}
+
+initAff();
+</script>
+</body>
+</html>
